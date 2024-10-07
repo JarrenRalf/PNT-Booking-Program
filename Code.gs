@@ -15,7 +15,9 @@ function onEdit(e)
   {
     const sheetName = SpreadsheetApp.getActiveSheet().getSheetName();
 
-    if (((sheetName === 'BOOKING PROGRAM' && row === 30 && col === 1) || (sheetName === 'ORDER FORM' && row === 2 && col === 1)) && e.value === 'TRUE') // If either checkbox is checked
+    if (((sheetName === 'BOOKING PROGRAM' && row === 30 && col === 1)       || (sheetName === 'Order Form'               && row === 2 && col === 1) 
+      || (sheetName === 'Order Form (Hoochies)'  && row === 2 && col === 1) || (sheetName === 'Order Form (Golden Bait)' && row === 2 && col === 1) 
+      || (sheetName === 'Order Form (Clearance)' && row === 2 && col === 1)) && e.value === 'TRUE') // If either checkbox is checked
     {
       const spreadsheet = e.source;
       const ui = SpreadsheetApp.getUi();
@@ -27,11 +29,13 @@ function onEdit(e)
         ui.alert('Please order at least 1 item before submitting your booking.')
         e.range.uncheck(); // Uncheck the checkbox that the user selected which triggered this script to run
       }
-      else if (bookingValues[0][0] === "Please enter your PO Number here" || bookingValues[0][0] === '') // The customer has not edited the PO field or set it to blank
+      else if (bookingValues[0][0] === '') // The customer has not edited the PO field or set it to blank
       {
+        sheet.getRange(4, 2).setValue('PNT_Booking_Order_2025').activate() // Take the user to the PO Number field
+        SpreadsheetApp.flush();
         ui.alert('Please enter a PO Number before submitting your order.')
         e.range.uncheck(); // Uncheck the checkbox that the user selected which triggered this script to run
-        sheet.getRange(4, 2).activate() // Take the user to the PO Number field
+        
       }
       else // Order is ready for submission
       {
@@ -41,29 +45,106 @@ function onEdit(e)
           e.range.uncheck(); // Uncheck the checkbox that the user selected which triggered this script to run
         else
         {
-          const orderForm = spreadsheet.getSheetByName('ORDER FORM') // Will collect data from the order form in order to create the export csv and order confirmation pdf
-          var orderComfirmData = [], isOrdered;
-
-          const exportData = orderForm.getSheetValues(6, 1, orderForm.getLastRow() - 5, 10).filter(item => {
-            isOrdered = item[8] !== ''; // Quantity is not blank, therefore this item has been ordered
-            
-            if (isOrdered)
-            {
-              orderComfirmData.push([...item])  // Take all values for the order confirmation
-              item.unshift('D')                 // The letter 'D' stands for detail line which is required for input into Adagio
-              item.pop()                        // Remove the last element in the row because the extended cost is not required in the csv file
-              item.splice(2, 6)                 // Remove all non-required elements
-              item[2] = Math.round((item[2] + Number.EPSILON) * 100) / 100 // Round to two decimals
-            }
-            return isOrdered
-          });
-
-          spreadsheet.getSheetByName('ORDER CONFIRMATION').getRange(4, 1, orderComfirmData.length, orderComfirmData[0].length).setValues(orderComfirmData)
-          spreadsheet.getSheetByName('Export').getRange(2, 1, exportData.length, exportData[0].length).setValues(exportData)
-          Utilities.sleep(5000)
+          const orderConfirmationSheet = spreadsheet.getSheetByName('ORDER CONFIRMATION')
+          const exportSheet = spreadsheet.getSheetByName('Export')
+          const exportData = orderConfirmationSheet.getSheetValues(4, 1, orderConfirmationSheet.getLastRow() - 3, 10).map(item => ['D', item[0], Math.round((item[7] + Number.EPSILON) * 100) / 100, item[8]]);
+          exportSheet.getRange(2, 1, exportSheet.getMaxRows() - 1, exportSheet.getMaxColumns()).clearContent().offset(0, 0, exportData.length, exportData[0].length).setValues(exportData)
+          SpreadsheetApp.flush();
           sheet.getRange('D30').check() // This checkbox will trigger the unbound script to lock the sheet and send the appropriate emails
+          SpreadsheetApp.flush();
+          ui.alert('Order Submitted!\n\nThank You.')
         }
       }
     }
   }
+}
+
+/**
+ * This function creates the order confirmation that will be email to the customers and sales representatives.
+ * 
+ * @param {Object[][]} data : The multi array of data that is used to create the order confirmation.
+ * @author Jarren Ralf
+ * @customfunction
+ */
+function getOrderConfirmation(data1, data2, data3, data4)
+{
+  const itemValues = [];
+  const orderForm = data1.filter(orderQty => orderQty[8] !== '');
+  const orderForm_Hoochies = data2.filter(orderQty => orderQty[8] !== '');
+  const orderForm_GoldenBait = data3.filter(orderQty => orderQty[8] !== '');
+  const orderForm_Clearance = data4.filter(orderQty => orderQty[8] !== '');
+
+  if (orderForm.length !== 0)
+    itemValues.push(...orderForm.map(item => {item.pop(); return item}));
+  if (orderForm_Hoochies.length !== 0)
+    itemValues.push(...orderForm_Hoochies.map(item => {item.pop(); return item}));
+  if (orderForm_GoldenBait.length !== 0)
+    itemValues.push(...orderForm_GoldenBait.map(item => {item.pop(); return item}));
+  if (orderForm_Clearance.length !== 0)
+    itemValues.push(...orderForm_Clearance.map(item => {item.pop(); return item}));
+  
+  return (itemValues.length === 0) ? '' : itemValues;
+}
+
+function getImages()
+{
+  const fromShopifySheet = SpreadsheetApp.openById('1sLhSt5xXPP5y9-9-K8kq4kMfmTuf6a9_l9Ohy0r82gI').getSheetByName('FromShopify')
+  const imageURLs = fromShopifySheet.getSheetValues(2, 15, fromShopifySheet.getLastRow() - 1, 11)
+  const sheet = SpreadsheetApp.getActive().getActiveSheet()
+  const range = sheet.getRange(665, 1, sheet.getLastRow() - 664, sheet.getLastColumn())
+  const values = range.getValues()
+  const backgroundColours = range.getBackgrounds()
+  var r = 665, rr = 0, rows = [], numRows = [], images = [[], [], [], [], [], []]
+  
+  for (var i = 0; i < values.length; i++)
+  {
+    if (values[i][0] !== '' && backgroundColours[i][0] != '#6d9eeb')
+    {
+      for (var j = 0; j < imageURLs.length; j++)
+      {
+        if (imageURLs[j][0].toString().toUpperCase() === values[i][0].toString().toUpperCase())
+        {
+          images[rows.length].push([SpreadsheetApp.newCellImage().setSourceUrl(imageURLs[j][10]).build()])
+          break;
+        }
+      }
+
+      if (j === imageURLs.length)
+        images[rows.length].push([""])
+      
+      rr++;
+    }
+    else if (backgroundColours[i][0] != '#ffffff')
+    {
+      rows.push(r);
+      numRows.push(rr);
+      r = i + 666;
+      rr = 0;
+    }
+  }
+
+  // sheet.getRange(rows[0], 11, numRows[0]).setValues(images[0])
+  // sheet.getRange(rows[1], 11, numRows[1]).setValues(images[1])
+  // sheet.getRange(rows[2], 11, numRows[2]).setValues(images[2])
+}
+
+function getImage()
+{
+  const fromShopifySheet = SpreadsheetApp.openById('1sLhSt5xXPP5y9-9-K8kq4kMfmTuf6a9_l9Ohy0r82gI').getSheetByName('FromShopify')
+  const imageURLs = fromShopifySheet.getSheetValues(2, 15, fromShopifySheet.getLastRow() - 1, 11)
+  const spreadsheet = SpreadsheetApp.getActive();
+  const sheet = spreadsheet.getActiveSheet();
+  const row = sheet.getActiveRange().getRow();
+  const sku = sheet.getSheetValues(row, 1, 1, 1)[0][0].toString().toUpperCase()
+
+  for (var j = 0; j < imageURLs.length; j++)
+  {
+    if (imageURLs[j][0].toString().toUpperCase() === sku)
+      break;
+  }
+
+  if (j !== imageURLs.length)
+    sheet.getRange(row, 11).setValue(SpreadsheetApp.newCellImage().setSourceUrl(imageURLs[j][10]).build())
+  else
+    spreadsheet.toast('Image Not Found')
 }
