@@ -50,7 +50,11 @@ function onEdit(e)
           const exportData = orderConfirmationSheet.getSheetValues(4, 1, orderConfirmationSheet.getLastRow() - 3, 10).map(item => ['D', item[0], Math.round((item[7] + Number.EPSILON) * 100) / 100, item[8]]);
           exportSheet.getRange(2, 1, exportSheet.getMaxRows() - 1, exportSheet.getMaxColumns()).clearContent().offset(0, 0, exportData.length, exportData[0].length).setValues(exportData)
           SpreadsheetApp.flush();
-          sheet.getRange('D30').check() // This checkbox will trigger the unbound script to lock the sheet and send the appropriate emails
+          spreadsheet.getRangeByName('Hidden_Checkbox').check() // This checkbox will trigger the unbound script to lock the sheet and send the appropriate emails
+          spreadsheet.getRangeByName('OF_Checkbox').check()
+          spreadsheet.getRangeByName('OF_Hoochie_Checkbox').check()
+          spreadsheet.getRangeByName('OF_GoldenBait_Checkbox').check()
+          spreadsheet.getRangeByName('OF_Clearance_Checkbox').check()
           SpreadsheetApp.flush();
           ui.alert('Order Submitted!\n\nThank You.')
         }
