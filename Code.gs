@@ -15,49 +15,65 @@ function onEdit(e)
   {
     const sheetName = SpreadsheetApp.getActiveSheet().getSheetName();
 
-    if (((sheetName === 'BOOKING PROGRAM' && row === 30 && col === 1)       || (sheetName === 'Order Form'               && row === 2 && col === 1) 
+    if ( (sheetName === 'BOOKING PROGRAM' && row === 30 && col === 1)       || (sheetName === 'Order Form'               && row === 2 && col === 1) 
       || (sheetName === 'Order Form (Hoochies)'  && row === 2 && col === 1) || (sheetName === 'Order Form (Golden Bait)' && row === 2 && col === 1) 
-      || (sheetName === 'Order Form (Clearance)' && row === 2 && col === 1)) && e.value === 'TRUE') // If either checkbox is checked
+      || (sheetName === 'Order Form (Clearance)' && row === 2 && col === 1)) // If either checkbox is checked
     {
-      const spreadsheet = e.source;
-      const ui = SpreadsheetApp.getUi();
-      const sheet = spreadsheet.getSheetByName('BOOKING PROGRAM');
-      const bookingValues = sheet.getSheetValues(4, 2, 9, 1); // Contains some values to check if the order is ready for submission
+      if (e.value === 'TRUE')
+      {
+        const spreadsheet = e.source;
+        const ui = SpreadsheetApp.getUi();
+        const sheet = spreadsheet.getSheetByName('BOOKING PROGRAM');
+        const bookingValues = sheet.getSheetValues(4, 2, 9, 1); // Contains some values to check if the order is ready for submission
 
-      if (bookingValues[8][0] == 0) // If the total is $0.00, then no items have been ordered, therefore prompt the user to order atleast 1 item
-      {
-        ui.alert('Please order at least 1 item before submitting your booking.')
-        e.range.uncheck(); // Uncheck the checkbox that the user selected which triggered this script to run
-      }
-      else if (bookingValues[0][0] === '') // The customer has not edited the PO field or set it to blank
-      {
-        sheet.getRange(4, 2).setValue('PNT_Booking_Order_2025').activate() // Take the user to the PO Number field
-        SpreadsheetApp.flush();
-        ui.alert('Please enter a PO Number before submitting your order.')
-        e.range.uncheck(); // Uncheck the checkbox that the user selected which triggered this script to run
-        
-      }
-      else // Order is ready for submission
-      {
-        const response = ui.alert('Is your order complete and ready for submission to Pacific Net & Twine?', ui.ButtonSet.YES_NO) // Double check if the user is ready to submit their order
-
-        if (response !== ui.Button.YES) // The user has selected CLOSE or NO
-          e.range.uncheck(); // Uncheck the checkbox that the user selected which triggered this script to run
-        else
+        if (bookingValues[8][0] == 0) // If the total is $0.00, then no items have been ordered, therefore prompt the user to order atleast 1 item
         {
-          const orderConfirmationSheet = spreadsheet.getSheetByName('ORDER CONFIRMATION')
-          const exportSheet = spreadsheet.getSheetByName('Export')
-          const exportData = orderConfirmationSheet.getSheetValues(4, 1, orderConfirmationSheet.getLastRow() - 3, 10).map(item => ['D', item[0], Math.round((item[7] + Number.EPSILON) * 100) / 100, item[8]]);
-          exportSheet.getRange(2, 1, exportSheet.getMaxRows() - 1, exportSheet.getMaxColumns()).clearContent().offset(0, 0, exportData.length, exportData[0].length).setValues(exportData)
-          SpreadsheetApp.flush();
-          spreadsheet.getRangeByName('Hidden_Checkbox').check() // This checkbox will trigger the unbound script to lock the sheet and send the appropriate emails
-          spreadsheet.getRangeByName('OF_Checkbox').check()
-          spreadsheet.getRangeByName('OF_Hoochie_Checkbox').check()
-          spreadsheet.getRangeByName('OF_GoldenBait_Checkbox').check()
-          spreadsheet.getRangeByName('OF_Clearance_Checkbox').check()
-          SpreadsheetApp.flush();
-          ui.alert('Order Submitted!\n\nThank You.')
+          ui.alert('Please order at least 1 item before submitting your booking.')
+          e.range.uncheck(); // Uncheck the checkbox that the user selected which triggered this script to run
         }
+        else if (bookingValues[0][0] === '') // The customer has not edited the PO field or set it to blank
+        {
+          sheet.getRange(4, 2).setValue('PNT_Booking_Order_2025').activate() // Take the user to the PO Number field
+          SpreadsheetApp.flush();
+          ui.alert('Please enter a PO Number before submitting your order.')
+          e.range.uncheck(); // Uncheck the checkbox that the user selected which triggered this script to run
+        }
+        else // Order is ready for submission
+        {
+          const response = ui.alert('Is your order complete and ready for submission to Pacific Net & Twine?', ui.ButtonSet.YES_NO) // Double check if the user is ready to submit their order
+
+          if (response !== ui.Button.YES) // The user has selected CLOSE or NO
+            e.range.uncheck(); // Uncheck the checkbox that the user selected which triggered this script to run
+          else
+          {
+            const orderConfirmationSheet = spreadsheet.getSheetByName('ORDER CONFIRMATION')
+            const exportSheet = spreadsheet.getSheetByName('Export')
+            const exportData = orderConfirmationSheet.getSheetValues(4, 1, orderConfirmationSheet.getLastRow() - 3, 10).map(item => ['D', item[0], Math.round((item[7] + Number.EPSILON) * 100) / 100, item[8]]);
+            exportSheet.getRange(2, 1, exportSheet.getMaxRows() - 1, exportSheet.getMaxColumns()).clearContent().offset(0, 0, exportData.length, exportData[0].length).setValues(exportData)
+            SpreadsheetApp.flush();
+            spreadsheet.getRangeByName('Hidden_Checkbox').check() // This checkbox will trigger the unbound script to lock the sheet and send the appropriate emails
+            spreadsheet.getRangeByName('Checkbox').check()
+            spreadsheet.getRangeByName('OF_Checkbox').check()
+            spreadsheet.getRangeByName('OF_Hoochie_Checkbox').check()
+            spreadsheet.getRangeByName('OF_GoldenBait_Checkbox').check()
+            spreadsheet.getRangeByName('OF_Clearance_Checkbox').check()
+            SpreadsheetApp.flush();
+            ui.alert('Order Submitted!\n\nThank You.')
+          }
+        }
+      }
+      else
+      {
+        const spreadsheet = e.source;
+        
+        spreadsheet.getRangeByName('Hidden_Checkbox').uncheck()
+        spreadsheet.getRangeByName('Checkbox').uncheck()
+        spreadsheet.getRangeByName('OF_Checkbox').uncheck()
+        spreadsheet.getRangeByName('OF_Hoochie_Checkbox').uncheck()
+        spreadsheet.getRangeByName('OF_GoldenBait_Checkbox').uncheck()
+        spreadsheet.getRangeByName('OF_Clearance_Checkbox').uncheck()
+        SpreadsheetApp.flush();
+        SpreadsheetApp.getUi().alert('Please resubmit your order when you are ready.\n\nThank You')
       }
     }
   }
